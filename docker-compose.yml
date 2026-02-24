@@ -37,7 +37,6 @@ services:
       # ── Features ──
       N8N_DIAGNOSTICS_ENABLED: false
       N8N_TEMPLATES_ENABLED: true
-      N8N_RUNNERS_ENABLED: "false"
 
       # ── Credentials (dùng trong workflow nodes) ──
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
