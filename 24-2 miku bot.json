@@ -1,0 +1,641 @@
+{
+  "name": "24-2 miku bot",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "32a7baf0-4941-4fd0-aea1-ee5bea3d9a64",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "5af1bf28-29c4-4b29-a656-244492715afa",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "3b002457-4038-47af-b943-c0ddc7c2afdb",
+      "name": "⏰ 8AM Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1312,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "dedbc6ad-e8b9-4f4e-932e-21f9b1d41a21",
+      "name": "✈️ Telegram Chat Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1312,
+        128
+      ],
+      "webhookId": "luanluan-tg-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "hqZpXp6kQO5lnHpp",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/"
+            }
+          ]
+        }
+      },
+      "id": "d328e66e-dcdb-4065-99e8-9222e7e2e0b3",
+      "name": "Is Command?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -1072,
+        128
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.message.text.split(' ')[0] }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "/report"
+            },
+            {
+              "value2": "/check"
+            },
+            {
+              "value2": "/emails"
+            },
+            {
+              "value2": "/help"
+            }
+          ]
+        },
+        "fallbackOutput": 3
+      },
+      "id": "28c712b4-1b8d-40a9-b9c8-9da17991c915",
+      "name": "🔀 Route Command",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "filters": {
+          "readStatus": "unread"
+        }
+      },
+      "id": "502d24ef-e42f-47cd-8c91-7f4b5557fc12",
+      "name": "📧 Read Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        -1072,
+        -288
+      ],
+      "webhookId": "10c4da68-b700-4b26-a35b-cea81b3fc3d1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "R7SnrySmJefhx4d0",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "=miku2000bot",
+        "text": "⚠️ *Lỗi đọc Gmail*\n\nKhông thể kết nối hoặc đọc email\\.\nVui lòng kiểm tra:\n• Credential Gmail còn hợp lệ không?\n• OAuth2 token đã hết hạn?\n\n`Lỗi: {{ $json.error?.message || 'Unknown error' }}`",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "id": "fd3b7e88-e69c-4b9b-b6ac-57d2c39e0ab1",
+      "name": "📧❌ Gmail Error Notify",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        -832,
+        -448
+      ],
+      "webhookId": "090672f4-07b8-4e54-9f5f-d476ab4036c4",
+      "credentials": {
+        "telegramApi": {
+          "id": "hqZpXp6kQO5lnHpp",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gom tất cả email thành 1 item để gửi batch vào AI\nconst emails = $input.all().map(item => ({\n  id:      item.json.id,\n  from:    item.json.from,\n  subject: item.json.subject,\n  snippet: item.json.snippet || item.json.text?.substring(0, 300) || ''\n}));\n\nreturn [{ json: { emails, count: emails.length } }];"
+      },
+      "id": "de211b67-6906-43ce-b4cc-c9cc45e5a39f",
+      "name": "Prepare Email Batch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Bạn là email assistant. Phân loại mỗi email vào:\n- reply_needed: email từ người thật, cần trả lời\n- advertisement: marketing, newsletter, promo, sale\n- fyi: thông báo, invoice, notification tự động\n- spam: rác, không liên quan\n\nTrả về JSON array (KHÔNG có markdown, chỉ JSON thuần):\n[{\"id\": \"...\", \"from\": \"...\", \"subject\": \"...\", \"category\": \"reply_needed\", \"summary_vi\": \"tóm tắt tiếng Việt ngắn gọn\", \"priority\": \"high|medium|low\"}]",
+              "role": "system"
+            },
+            {
+              "content": "=Emails to classify:\n{{ JSON.stringify($json.emails, null, 2) }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 2000,
+          "temperature": 0.1
+        }
+      },
+      "id": "2eee101a-2767-47da-84e3-60e6dffd9592",
+      "name": "🤖 AI Classify Emails",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [
+        -592,
+        -288
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "JkzyiYOViURlWSyr",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "HEAD",
+        "url": "https://luanluan.tech",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "d476f279-b5ad-432d-9656-bdc5196a89a0",
+      "name": "🌐 Check luanluan.tech",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -352,
+        -288
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Lấy AI classification result ──\nlet classified = [];\n\n\ntry {\n  // Tìm output từ AI node trong execution context\n  const aiRaw = $('🤖 AI Classify Emails').all();\n  const raw = aiRaw?.content\n           || aiRaw?.choices?.[0]?.message?.content\n           || '[]';\n  // Strip markdown code fences nếu model trả về\n  const cleaned = raw.replace(/```json\\n?|```/g, '').trim();\n  classified = JSON.parse(cleaned);\n} catch(e) {\n  classified = [];\n}\n\n// ── Lấy site status ──\n// items[0] là từ check-site (main hoặc error output)\nconst siteData = items[0].json;\nlet siteStatus;\n\n// Khi timeout/network error: siteData.error tồn tại, không có statusCode\nif (siteData.error || (!siteData.statusCode && siteData.code)) {\n  const reason = siteData.error?.message || siteData.message || 'timeout/unreachable';\n  siteStatus = `🔴 OFFLINE\\n   \\`${reason}\\``;\n} else if (siteData.statusCode >= 200 && siteData.statusCode < 400) {\n  siteStatus = `✅ ONLINE \\(${siteData.statusCode}\\)`;\n} else {\n  siteStatus = `⚠️ Lỗi HTTP ${siteData.statusCode || 'unknown'}`;\n}\n\nconst replyNeeded = classified.filter(m => m.category === 'reply_needed');\nconst ads         = classified.filter(m => m.category === 'advertisement');\nconst fyi         = classified.filter(m => m.category === 'fyi');\nconst spam        = classified.filter(m => m.category === 'spam');\n\nconst now = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n// Escape MarkdownV2 special chars in timestamp\nconst nowEscaped = now.replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&');\n\nlet msg = `📊 *BÁO CÁO SÁNG — 08:00*\\n`;\nmsg += `\\`${nowEscaped}\\`\\n\\n`;\nmsg += `🌐 *luanluan\\.tech:* ${siteStatus}\\n\\n`;\nmsg += `📧 *Email hôm nay: ${classified.length} mới*\\n`;\nmsg += `├ 💬 Cần reply: ${replyNeeded.length}\\n`;\nmsg += `├ 📢 Quảng cáo: ${ads.length}\\n`;\nmsg += `├ 📌 FYI: ${fyi.length}\\n`;\nmsg += `└ 🗑️ Spam: ${spam.length}\\n`;\n\nif (replyNeeded.length > 0) {\n  msg += `\\n*📌 Cần xử lý:*\\n`;\n  replyNeeded.slice(0, 5).forEach((m, i) => {\n    const icon = m.priority === 'high' ? '🔴' : m.priority === 'medium' ? '🟡' : '🟢';\n    const from    = (m.from    || '').replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&');\n    const summary = (m.summary_vi || m.subject || '').replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&');\n    msg += `${i+1}\\. ${icon} \\`${from}\\`\\n   ${summary}\\n`;\n  });\n  if (replyNeeded.length > 5) {\n    msg += `_\\.\\.\\.và ${replyNeeded.length - 5} email khác_\\n`;\n  }\n}\n\nreturn [{ json: { text: msg, parse_mode: 'MarkdownV2' } }];"
+      },
+      "id": "aa8f397b-0a4e-4d20-8a67-8679e373f09f",
+      "name": "📝 Format Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "=@miku2000bot",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "id": "34fb575b-e17d-452c-be29-f34b34699a38",
+      "name": "✈️ Send Morning Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        128,
+        -288
+      ],
+      "webhookId": "e3f0a5b4-abe5-4a91-85a1-7c798c5fabb4",
+      "credentials": {
+        "telegramApi": {
+          "id": "hqZpXp6kQO5lnHpp",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "HEAD",
+        "url": "https://luanluan.tech",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "0a67ad16-2991-4386-912c-ee0f332e6125",
+      "name": "🌐 Check Site (cmd)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -560,
+        240
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Xử lý cả 3 trường hợp: online / HTTP error / timeout+network error ──\nconst allItems = $input.all();\nconst raw = allItems[0]?.json;\n\n// Response is an array [{statusCode, headers, ...}], unwrap it safely\nconst d = Array.isArray(raw) ? raw[0] : raw;\n\nif (!d) {\n  return [{ json: { text: '❌ *Lỗi*: Không nhận được dữ liệu phản hồi', parse_mode: 'MarkdownV2' } }];\n}\n\nconst url = 'https://luanluan.tech';\nconst urlEscaped = url.replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&');\n\nlet statusLine;\nif (d.error || d.code === 'ECONNREFUSED' || d.code === 'ETIMEDOUT' || d.code === 'ENOTFOUND') {\n  // Network-level error: timeout, DNS fail, connection refused...\n  const reason = d.error?.message || d.message || d.code || 'Không thể kết nối';\n  const reasonEscaped = reason.replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&');\n  statusLine = `🔴 *OFFLINE*\\n🔎 Lý do: \\`${reasonEscaped}\\``;\n} else if (d.statusCode != null && d.statusCode >= 200 && d.statusCode < 400) {\n  // HTTP success\n  statusLine = `✅ *ONLINE* \\\\(HTTP ${d.statusCode}\\\\)`;\n} else {\n  // HTTP error (5xx, 4xx...) or statusCode is missing\n  statusLine = `⚠️ *Lỗi HTTP ${d.statusCode ?? 'unknown'}*\\nServer phản hồi nhưng có lỗi`;\n}\n\nconst msg = `🌐 *Kiểm tra website*\\n${urlEscaped}\\n\\n${statusLine}`;\nreturn [{ json: { text: msg, parse_mode: 'MarkdownV2' } }];"
+      },
+      "id": "0ce821b4-d9c9-4f81-ab9f-54b028b943db",
+      "name": "Format Check Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('✈️ Telegram Chat Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "id": "a8ae777b-5399-430a-9c96-209a2dc28f0a",
+      "name": "Reply /check",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        -80,
+        240
+      ],
+      "webhookId": "c4e416e8-7de0-406d-baa4-1fd74ca8a285",
+      "credentials": {
+        "telegramApi": {
+          "id": "hqZpXp6kQO5lnHpp",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 20,
+        "filters": {
+          "readStatus": "unread"
+        }
+      },
+      "id": "5d59577f-c315-4280-a5c3-df6a8b4ab8fd",
+      "name": "📧 Read Gmail (cmd)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        16
+      ],
+      "webhookId": "5dbae2f5-1376-49b6-8ee3-0e249b5e9710",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "R7SnrySmJefhx4d0",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Kiểm tra nếu có lỗi (error output từ Gmail node)\nconst items = $input.all();\nconst d = items[0]?.json;\n\nif (d.error || d.message?.includes('Error') || d.name === 'NodeOperationError') {\n  return [{ json: {\n    text: `⚠️ *Không thể đọc email*\\n\\nLỗi kết nối Gmail\\. Vui lòng kiểm tra credential\\.\\n\\`${(d.error?.message || d.message || 'Unknown error').replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&')}\\``,\n    parse_mode: 'MarkdownV2'\n  }}];\n}\n\n// Nếu không có email nào\nif (items.length === 0 || !items[0].json.id) {\n  return [{ json: {\n    text: `📭 *Không có email mới*\\nInbox trống trong 24h qua\\.`,\n    parse_mode: 'MarkdownV2'\n  }}];\n}\n\n// Build email list\nlet msg = `📧 *Email chưa đọc \\(${items.length}\\)*\\n\\n`;\nitems.slice(0, 10).forEach((item, i) => {\n  const from    = (item.json.from    || 'unknown').replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&');\n  const subject = (item.json.subject || '(no subject)').replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&');\n  msg += `${i+1}\\. 📨 \\`${from}\\`\\n   ${subject}\\n`;\n});\nif (items.length > 10) msg += `_\\.\\.\\.và ${items.length - 10} email khác_`;\n\nreturn [{ json: { text: msg, parse_mode: 'MarkdownV2' } }];"
+      },
+      "id": "03a2bce5-e9d0-47cf-bd02-cf1dd0800573",
+      "name": "Format Emails List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('✈️ Telegram Chat Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "id": "13c602e0-01cc-4dd0-a1f5-6dd9455af0b7",
+      "name": "Reply /emails",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        -80,
+        16
+      ],
+      "webhookId": "a283888d-964f-48ca-9320-d1cb41b9c999",
+      "credentials": {
+        "telegramApi": {
+          "id": "hqZpXp6kQO5lnHpp",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('✈️ Telegram Chat Trigger').item.json.message.chat.id }}",
+        "text": "ℹ️ *Các lệnh có thể dùng:*\n\n`/report` — Xem báo cáo email ngay bây giờ\n`/check` — Kiểm tra luanluan\\.tech\n`/emails` — Xem danh sách email chưa đọc\n`/help` — Hiện menu này",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "id": "a5ff75a0-55c4-4600-91b8-a2cb21f219b5",
+      "name": "Reply /help",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        -80,
+        -112
+      ],
+      "webhookId": "b1419e67-0673-45eb-ac57-605dd90ea2d8",
+      "credentials": {
+        "telegramApi": {
+          "id": "hqZpXp6kQO5lnHpp",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ 8AM Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "📧 Read Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📧 Read Gmail": {
+      "main": [
+        [
+          {
+            "node": "Prepare Email Batch",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "📧❌ Gmail Error Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Email Batch": {
+      "main": [
+        [
+          {
+            "node": "🤖 AI Classify Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 AI Classify Emails": {
+      "main": [
+        [
+          {
+            "node": "🌐 Check luanluan.tech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Check luanluan.tech": {
+      "main": [
+        [
+          {
+            "node": "📝 Format Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Format Report": {
+      "main": [
+        [
+          {
+            "node": "✈️ Send Morning Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✈️ Telegram Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Command?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Command?": {
+      "main": [
+        [
+          {
+            "node": "🔀 Route Command",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply /help",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔀 Route Command": {
+      "main": [
+        [
+          {
+            "node": "📧 Read Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🌐 Check Site (cmd)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📧 Read Gmail (cmd)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply /help",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Check Site (cmd)": {
+      "main": [
+        [
+          {
+            "node": "Format Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Check Result": {
+      "main": [
+        [
+          {
+            "node": "Reply /check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📧 Read Gmail (cmd)": {
+      "main": [
+        [
+          {
+            "node": "Format Emails List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Emails List": {
+      "main": [
+        [
+          {
+            "node": "Reply /emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "750a636e-d90e-4f35-9392-a07e53a74844",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "14a38fd09c7ede96f5189d440ee3eaefeae9462b0865b74cb867ca065f54e3c2"
+  },
+  "id": "t4nAoJNlrXY5wCvk",
+  "tags": [
+    {
+      "updatedAt": "2026-02-24T07:53:45.127Z",
+      "createdAt": "2026-02-24T07:53:45.127Z",
+      "id": "KzUyQXCIiGw8523F",
+      "name": "luanluan-assistant"
+    }
+  ]
+}

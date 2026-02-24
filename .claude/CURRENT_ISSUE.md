@@ -1,18 +1,13 @@
-docker logs a63804135009
-Initializing n8n process
-n8n ready on ::, port 5678
-n8n Task Broker ready on 127.0.0.1, port 5679
-Failed to start Python task runner in internal mode. because Python 3 is missing from this system. Launching a Python runner in internal mode is intended only for debugging and is not recommended for production. Users are encouraged to deploy in external mode. See: https://docs.n8n.io/hosting/configuration/task-runners/#setting-up-external-mode
-
 There is a deprecation related to your environment variables. Please take the recommended actions to update your configuration:
+summary-mail-report-workflow-n8n-1 | - N8N_RUNNERS_ENABLED -> Remove this environment variable; it is no longer needed.
+summary-mail-report-workflow-n8n-1 |
+summary-mail-report-workflow-n8n-1 | [license SDK] Skipping renewal on init: license cert is not initialized
+summary-mail-report-workflow-n8n-1 | Version: 2.9.2
+summary-mail-report-workflow-n8n-1 | Building workflow dependency index...
+summary-mail-report-workflow-n8n-1 | Finished building workflow dependency index. Processed 0 draft workflows, 0 published workflows.
+Task request timed out after 60 seconds
+Your Code node task was not matched to a runner within the timeout period. This indicates that the task runner is currently down, or not ready, or at capacity, so it cannot service your task.
 
-- N8N_RUNNERS_ENABLED -> Remove this environment variable; it is no longer needed.
+If you are repeatedly executing Code nodes with long-running tasks across your instance, please space them apart to give the runner time to catch up. If this does not describe your use case, please open a GitHub issue or reach out to support.
 
-[license SDK] Skipping renewal on init: license cert is not initialized
-Registered runner "JS Task Runner" (pHFqJWjSojx3o3oY1dH_O)
-Version: 2.9.2
-Building workflow dependency index...
-Finished building workflow dependency index. Processed 0 draft workflows, 0 published workflows.
-
-Editor is now accessible via:
-https://n8n.luyenviet.io
+If needed, you can increase the timeout using the N8N_RUNNERS_TASK_REQUEST_TIMEOUT environment variable.

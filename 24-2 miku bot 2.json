@@ -1,0 +1,614 @@
+{
+  "name": "24-2 miku bot 2",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "b287a9a4-cfe2-4210-b7ae-6ddae6dc30bd",
+      "name": "⏰ 8AM Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -480,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "12cb7687-fefd-41fb-b8d7-eee883129bcc",
+      "name": "✈️ Telegram Chat Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        576
+      ],
+      "webhookId": "luanluan-tg-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "hqZpXp6kQO5lnHpp",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/"
+            }
+          ]
+        }
+      },
+      "id": "77fc15f1-50b5-45f2-a555-00c05d467df7",
+      "name": "Is Command?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        576
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.message.text.split(' ')[0] }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "/report-all"
+            },
+            {
+              "value2": "/check-web"
+            },
+            {
+              "value2": "/emails"
+            },
+            {
+              "value2": "/help"
+            }
+          ]
+        },
+        "fallbackOutput": 3
+      },
+      "id": "95a1e9b7-2fd5-4c58-9637-5d1087122a44",
+      "name": "🔀 Route Command",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [
+        0,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "filters": {
+          "readStatus": "unread"
+        }
+      },
+      "id": "e8370a6f-dfed-461b-a2f3-bb397d0ac1d2",
+      "name": "📧 Read Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        160
+      ],
+      "webhookId": "10c4da68-b700-4b26-a35b-cea81b3fc3d1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "R7SnrySmJefhx4d0",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "1008651619",
+        "text": "⚠️ *Lỗi đọc Gmail*\n\nKhông thể kết nối hoặc đọc email\\.\nVui lòng kiểm tra:\n• Credential Gmail còn hợp lệ không?\n• OAuth2 token đã hết hạn?\n\n`Lỗi: {{ $json.error?.message || 'Unknown error' }}`",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "id": "76f1a6bd-321c-445d-bf9a-a18dd6d44b85",
+      "name": "📧❌ Gmail Error Notify",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "090672f4-07b8-4e54-9f5f-d476ab4036c4",
+      "credentials": {
+        "telegramApi": {
+          "id": "hqZpXp6kQO5lnHpp",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gom tất cả email thành 1 item để gửi batch vào AI\nconst emails = $input.all().map(item => ({\n  id:      item.json.id,\n  from:    item.json.from,\n  subject: item.json.subject,\n  snippet: item.json.snippet || item.json.text?.substring(0, 300) || ''\n}));\n\nreturn [{ json: { emails, count: emails.length } }];"
+      },
+      "id": "c1ae4b33-ae70-46f8-877d-6779bf4b29d4",
+      "name": "Prepare Email Batch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Bạn là email assistant. Phân loại mỗi email vào:\n- reply_needed: email từ người thật, cần trả lời\n- advertisement: marketing, newsletter, promo, sale\n- fyi: thông báo, invoice, notification tự động\n- spam: rác, không liên quan\n\nTrả về JSON array (KHÔNG có markdown, chỉ JSON thuần):\n[{\"id\": \"...\", \"from\": \"...\", \"subject\": \"...\", \"category\": \"reply_needed\", \"summary_vi\": \"tóm tắt tiếng Việt ngắn gọn\", \"priority\": \"high|medium|low\"}]",
+              "role": "system"
+            },
+            {
+              "content": "=Emails to classify:\n{{ JSON.stringify($json.emails, null, 2) }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 10000,
+          "temperature": 0.1
+        }
+      },
+      "id": "bddbb33c-eb3b-4374-957e-3839a446be71",
+      "name": "🤖 AI Classify Emails",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [
+        240,
+        160
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "JkzyiYOViURlWSyr",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "HEAD",
+        "url": "https://luanluan.tech",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "5197fc57-7c38-4b94-8e22-c47478bbebdb",
+      "name": "🌐 Check luanluan.tech",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        480,
+        160
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Lấy AI classification result ──\nlet classified = [];\ntry {\n  const aiItems = $('🤖 AI Classify Emails').all();\n  \n  // n8n OpenAI node returns: [{ json: { index, message: { content: \"...\" }, finish_reason } }]\n  const raw = aiItems[0]?.json?.message?.content\n           || aiItems[0]?.json?.content\n           || aiItems[0]?.json?.text\n           || '[]';\n\n  // Warn if response was cut off\n  const finishReason = aiItems[0]?.json?.finish_reason;\n  if (finishReason === 'length') {\n    // Truncated — try to salvage valid portion\n    const lastBracket = raw.lastIndexOf('}');\n    const salvaged = lastBracket !== -1 ? raw.substring(0, lastBracket + 1) + ']' : '[]';\n    const cleaned = salvaged.replace(/```json\\n?|```/g, '').trim();\n    classified = JSON.parse(cleaned);\n  } else {\n    const cleaned = raw.replace(/```json\\n?|```/g, '').trim();\n    classified = JSON.parse(cleaned);\n  }\n} catch(e) {\n  classified = [];\n}\n\n// ── Lấy site status ──\nconst allItems = $input.all();\nconst siteRaw = allItems[0]?.json;\nconst siteData = Array.isArray(siteRaw) ? siteRaw[0] : siteRaw;\n\nlet siteStatus;\nif (!siteData) {\n  siteStatus = '🔴 OFFLINE\\n   `Không nhận được phản hồi`';\n} else if (siteData.error || (!siteData.statusCode && siteData.code)) {\n  const reason = (siteData.error?.message || siteData.message || 'timeout/unreachable').replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&');\n  siteStatus = `🔴 OFFLINE\\n   \\`${reason}\\``;\n} else if (siteData.statusCode >= 200 && siteData.statusCode < 400) {\n  siteStatus = `✅ ONLINE \\\\(${siteData.statusCode}\\\\)`;\n} else {\n  siteStatus = `⚠️ Lỗi HTTP ${siteData.statusCode || 'unknown'}`;\n}\n\nconst replyNeeded = classified.filter(m => m.category === 'reply_needed');\nconst ads         = classified.filter(m => m.category === 'advertisement');\nconst fyi         = classified.filter(m => m.category === 'fyi');\nconst spam        = classified.filter(m => m.category === 'spam');\n\nconst now = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\nconst nowEscaped = now.replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&');\n\nlet msg = `📊 *BÁO CÁO SÁNG — 08:00*\\n`;\nmsg += `\\`${nowEscaped}\\`\\n\\n`;\nmsg += `🌐 *luanluan\\\\.tech:* ${siteStatus}\\n\\n`;\nmsg += `📧 *Email hôm nay: ${classified.length} mới*\\n`;\nmsg += `├ 💬 Cần reply: ${replyNeeded.length}\\n`;\nmsg += `├ 📢 Quảng cáo: ${ads.length}\\n`;\nmsg += `├ 📌 FYI: ${fyi.length}\\n`;\nmsg += `└ 🗑️ Spam: ${spam.length}\\n`;\n\nif (replyNeeded.length > 0) {\n  msg += `\\n*📌 Cần xử lý:*\\n`;\n  replyNeeded.slice(0, 5).forEach((m, i) => {\n    const icon = m.priority === 'high' ? '🔴' : m.priority === 'medium' ? '🟡' : '🟢';\n    const from    = (m.from    || '').replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&');\n    const summary = (m.summary_vi || m.subject || '').replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&');\n    msg += `${i+1}\\\\. ${icon} \\`${from}\\`\\n   ${summary}\\n`;\n  });\n  if (replyNeeded.length > 5) {\n    msg += `_\\\\.\\\\.\\\\.và ${replyNeeded.length - 5} email khác_\\n`;\n  }\n}\n\nreturn [{ json: { text: msg, parse_mode: 'MarkdownV2' } }];"
+      },
+      "id": "d0921109-3129-4ef4-97ed-a953e6223082",
+      "name": "📝 Format Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "1008651619",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "id": "18614ffe-cfe0-4677-a238-5d5df9b383b3",
+      "name": "✈️ Send Morning Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        160
+      ],
+      "webhookId": "e3f0a5b4-abe5-4a91-85a1-7c798c5fabb4",
+      "credentials": {
+        "telegramApi": {
+          "id": "hqZpXp6kQO5lnHpp",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "HEAD",
+        "url": "https://luanluan.tech",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "96622a12-c07f-47d6-b5ec-ef89d91903e1",
+      "name": "🌐 Check Site (cmd)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        272,
+        688
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Xử lý cả 3 trường hợp: online / HTTP error / timeout+network error ──\nconst allItems = $input.all();\nconst raw = allItems[0]?.json;\n\n// Response is an array [{statusCode, headers, ...}], unwrap it safely\nconst d = Array.isArray(raw) ? raw[0] : raw;\n\nif (!d) {\n  return [{ json: { text: '❌ *Lỗi*: Không nhận được dữ liệu phản hồi', parse_mode: 'MarkdownV2' } }];\n}\n\nconst url = 'https://luanluan.tech';\nconst urlEscaped = url.replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&');\n\nlet statusLine;\nif (d.error || d.code === 'ECONNREFUSED' || d.code === 'ETIMEDOUT' || d.code === 'ENOTFOUND') {\n  // Network-level error: timeout, DNS fail, connection refused...\n  const reason = d.error?.message || d.message || d.code || 'Không thể kết nối';\n  const reasonEscaped = reason.replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&');\n  statusLine = `🔴 *OFFLINE*\\n🔎 Lý do: \\`${reasonEscaped}\\``;\n} else if (d.statusCode != null && d.statusCode >= 200 && d.statusCode < 400) {\n  // HTTP success\n  statusLine = `✅ *ONLINE* \\\\(HTTP ${d.statusCode}\\\\)`;\n} else {\n  // HTTP error (5xx, 4xx...) or statusCode is missing\n  statusLine = `⚠️ *Lỗi HTTP ${d.statusCode ?? 'unknown'}*\\nServer phản hồi nhưng có lỗi`;\n}\n\nconst msg = `🌐 *Kiểm tra website*\\n${urlEscaped}\\n\\n${statusLine}`;\nreturn [{ json: { text: msg, parse_mode: 'MarkdownV2' } }];"
+      },
+      "id": "8abfe507-1bc0-4e5c-bf61-ba3c91f417ad",
+      "name": "Format Check Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('✈️ Telegram Chat Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "id": "25daef52-3c5d-4912-920f-60eef218078c",
+      "name": "Reply /check",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        752,
+        688
+      ],
+      "webhookId": "c4e416e8-7de0-406d-baa4-1fd74ca8a285",
+      "credentials": {
+        "telegramApi": {
+          "id": "hqZpXp6kQO5lnHpp",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 20,
+        "filters": {
+          "readStatus": "unread"
+        }
+      },
+      "id": "eba02f14-6679-454f-a588-d81b18f50f85",
+      "name": "📧 Read Gmail (cmd)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        272,
+        464
+      ],
+      "webhookId": "5dbae2f5-1376-49b6-8ee3-0e249b5e9710",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "R7SnrySmJefhx4d0",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Kiểm tra nếu có lỗi (error output từ Gmail node)\nconst items = $input.all();\nconst d = items[0]?.json;\n\nif (d.error || d.message?.includes('Error') || d.name === 'NodeOperationError') {\n  return [{ json: {\n    text: `⚠️ *Không thể đọc email*\\n\\nLỗi kết nối Gmail\\. Vui lòng kiểm tra credential\\.\\n\\`${(d.error?.message || d.message || 'Unknown error').replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&')}\\``,\n    parse_mode: 'MarkdownV2'\n  }}];\n}\n\n// Nếu không có email nào\nif (items.length === 0 || !items[0].json.id) {\n  return [{ json: {\n    text: `📭 *Không có email mới*\\nInbox trống trong 24h qua\\.`,\n    parse_mode: 'MarkdownV2'\n  }}];\n}\n\n// Build email list\nlet msg = `📧 *Email chưa đọc \\(${items.length}\\)*\\n\\n`;\nitems.slice(0, 10).forEach((item, i) => {\n  const from    = (item.json.from    || 'unknown').replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&');\n  const subject = (item.json.subject || '(no subject)').replace(/[_*[\\]()~>#+=|{}.!-]/g, '\\\\$&');\n  msg += `${i+1}\\. 📨 \\`${from}\\`\\n   ${subject}\\n`;\n});\nif (items.length > 10) msg += `_\\.\\.\\.và ${items.length - 10} email khác_`;\n\nreturn [{ json: { text: msg, parse_mode: 'MarkdownV2' } }];"
+      },
+      "id": "6c272a9d-6bbd-4ed2-b510-e2ffcbe1b0cf",
+      "name": "Format Emails List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('✈️ Telegram Chat Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "id": "f115e459-5bd8-4f83-9e05-48706e6e4cc9",
+      "name": "Reply /emails",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        752,
+        464
+      ],
+      "webhookId": "a283888d-964f-48ca-9320-d1cb41b9c999",
+      "credentials": {
+        "telegramApi": {
+          "id": "hqZpXp6kQO5lnHpp",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('✈️ Telegram Chat Trigger').item.json.message.chat.id }}",
+        "text": "=ℹ️ *Các lệnh có thể dùng:*\n\n`/report-all` — Xem báo cáo email ngay bây giờ\n`/check-web` — Kiểm tra luanluan\\.tech\n`/emails` — Xem danh sách email chưa đọc\n`/help` — Hiện menu này",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "id": "bbf8c3c7-0475-42f6-9861-d17c08e54e73",
+      "name": "Reply /help",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        752,
+        336
+      ],
+      "webhookId": "b1419e67-0673-45eb-ac57-605dd90ea2d8",
+      "credentials": {
+        "telegramApi": {
+          "id": "hqZpXp6kQO5lnHpp",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "⏰ 8AM Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "📧 Read Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📧 Read Gmail": {
+      "main": [
+        [
+          {
+            "node": "Prepare Email Batch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📧❌ Gmail Error Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Email Batch": {
+      "main": [
+        [
+          {
+            "node": "🤖 AI Classify Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 AI Classify Emails": {
+      "main": [
+        [
+          {
+            "node": "🌐 Check luanluan.tech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Check luanluan.tech": {
+      "main": [
+        [
+          {
+            "node": "📝 Format Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📝 Format Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Format Report": {
+      "main": [
+        [
+          {
+            "node": "✈️ Send Morning Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✈️ Telegram Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Command?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Command?": {
+      "main": [
+        [
+          {
+            "node": "🔀 Route Command",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply /help",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔀 Route Command": {
+      "main": [
+        [
+          {
+            "node": "📧 Read Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🌐 Check Site (cmd)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📧 Read Gmail (cmd)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply /help",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Check Site (cmd)": {
+      "main": [
+        [
+          {
+            "node": "Format Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Check Result": {
+      "main": [
+        [
+          {
+            "node": "Reply /check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📧 Read Gmail (cmd)": {
+      "main": [
+        [
+          {
+            "node": "Format Emails List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Emails List": {
+      "main": [
+        [
+          {
+            "node": "Reply /emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "90dd7965-fcda-44da-a0aa-bbde421706b1",
+  "meta": {
+    "instanceId": "14a38fd09c7ede96f5189d440ee3eaefeae9462b0865b74cb867ca065f54e3c2"
+  },
+  "id": "U0zIVEHZtgDYps2F",
+  "tags": []
+}

@@ -1,72 +1,23 @@
 version: "3.8"
 
-# ============================================================
-#  n8n STACK — luanluan.tech assistant (single user)
-#  SQLite + n8n only. No Postgres, no Redis, no worker.
-# ============================================================
-
 services:
   n8n:
-    image: n8nio/n8n:latest
-    container_name: n8n_app
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n
     restart: unless-stopped
     ports:
       - "5678:5678"
     environment:
-      # ── URL & Webhook ──
-      N8N_HOST: ${N8N_HOST:-localhost}
-      N8N_PORT: 5678
-      N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
-      WEBHOOK_URL: ${WEBHOOK_URL:-http://localhost:5678/}
-      N8N_EDITOR_BASE_URL: ${WEBHOOK_URL:-http://localhost:5678/}
-
-      # ── Timezone ──
-      GENERIC_TIMEZONE: Asia/Ho_Chi_Minh
-      TZ: Asia/Ho_Chi_Minh
-
-      # ── Encryption ──
-      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?N8N_ENCRYPTION_KEY is required}
-
-      # ── Executions ──
-      EXECUTIONS_DATA_SAVE_ON_ERROR: all
-      EXECUTIONS_DATA_SAVE_ON_SUCCESS: all
-      EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS: true
-      EXECUTIONS_DATA_PRUNE: true
-      EXECUTIONS_DATA_MAX_AGE: 720 # giữ 30 ngày
-
-      # ── Features ──
-      N8N_DIAGNOSTICS_ENABLED: false
-      N8N_TEMPLATES_ENABLED: true
-
-      # ── Credentials (dùng trong workflow nodes) ──
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      GMAIL_USER: ${GMAIL_USER:-}
-      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
-      MONITOR_URL: ${MONITOR_URL:-https://luanluan.tech}
-
+      - GENERIC_TIMEZONE=Asia/Ho_Chi_Minh
+      - TZ=Asia/Ho_Chi_Minh
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_HOST=n8n.luyenviet.io
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://n8n.luyenviet.io/
     volumes:
       - n8n_data:/home/node/.n8n
 
-  # ─── CADDY (reverse proxy + auto HTTPS) ─────────────────
-  caddy:
-    image: caddy:2-alpine
-    container_name: n8n_caddy
-    restart: unless-stopped
-    profiles: ["https"] # chỉ bật khi: docker compose --profile https up -d
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - n8n
-
 volumes:
   n8n_data:
-  caddy_data:
-  caddy_config:
+    external: true
