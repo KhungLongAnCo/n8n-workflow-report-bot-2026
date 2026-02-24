@@ -1,0 +1,34 @@
+# ============================================================
+#  Caddyfile — Auto HTTPS cho n8n
+#  Thay n8n.luanluan.tech bằng domain thật của bạn
+# ============================================================
+
+n8n.luanluan.tech {
+    reverse_proxy n8n:5678 {
+        # Header forwarding cho Webhook
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Bảo vệ editor với basic auth (thêm lớp ngoài n8n)
+    # basicauth /editor/* {
+    #     admin JDJhJDE0JHNvbWVoYXNo
+    # }
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+
+    log {
+        output file /var/log/caddy/n8n.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+    }
+}

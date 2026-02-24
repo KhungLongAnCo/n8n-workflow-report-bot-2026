@@ -1,0 +1,42 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$CLAUDE_TOOL_INPUT\" in *.env*|*.pem*|*.key*|*secrets*) echo 'BLOCK: Access denied to sensitive file' >&2; exit 2;; esac"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$CLAUDE_TOOL_INPUT\" in *.env*|*.pem*|*.key*|*secrets*) echo 'BLOCK: Access denied to sensitive file' >&2; exit 2;; esac"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$CLAUDE_TOOL_INPUT\" in *.env*|*.pem*|*.key*|*secrets*) echo 'BLOCK: Access denied to sensitive file' >&2; exit 2;; esac"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$CLAUDE_TOOL_INPUT\" in *\\.env*|*cat*\\.env*|*secrets*) echo 'BLOCK: Access denied to sensitive file' >&2; exit 2;; esac"
+          }
+        ]
+      }
+    ]
+  }
+}
